@@ -38,9 +38,14 @@ func init() {
 }
 
 func init() {
+	err := errors.New("error: Cannot connect to database")
 	db, err := sql.Open("mysql", DataSourceName)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
+	}
+	err = db.Ping()
+	if err != nil {
+		log.Fatalln(err)
 	}
 	sea.SetDbInstance(db)
 }
