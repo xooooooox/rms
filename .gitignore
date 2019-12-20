@@ -1,0 +1,20 @@
+# jetbrains editor
+.idea
+
+# visual studio code editor
+.vscode
+
+# netbeans editor
+nbproject
+
+# all log file
+*.log
+
+# windows binary file
+*.exe
+*.exe*
+
+# linux binary file
+*.a
+*.so
+*.out
