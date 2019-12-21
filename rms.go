@@ -61,7 +61,7 @@ func main() {
 
 // CreateModelWrite information schema write
 func CreateModelWrite() error {
-	tables, err := CreateModelTable()
+	tables, err := sea.InformationSchemaAllTables(DbName)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func CreateModelWrite() error {
 	}
 	for _, vt := range tables {
 		tableName := vt.TableName
-		columns, _ := CreateModelColumn(vt.TableName)
+		columns, _ := sea.InformationSchemaAllColumns(vt.TableSchema, vt.TableName)
 		lengthColumn := len(columns)
 		if lengthColumn == 0 {
 			continue
@@ -142,24 +142,6 @@ func CreateTagXORM(c *sea.InformationSchemaColumns) string {
 	// content += `comment:'` + c.ColumnComment + `' `
 	content = strings.TrimRight(content, ` `)
 	return content
-}
-
-// CreateModelTable information schema table
-func CreateModelTable() ([]sea.InformationSchemaTables, error) {
-	tables := []sea.InformationSchemaTables{}
-	//query := "SELECT * FROM `information_schema`.`TABLES` WHERE(`TABLE_SCHEMA`=? AND `TABLE_TYPE`='BASE TABLE')"
-	query := "SELECT `TABLE_NAME` AS `table_name`,`TABLE_COMMENT` AS `table_comment` FROM `information_schema`.`TABLES` WHERE(`TABLE_SCHEMA`=? AND `TABLE_TYPE`='BASE TABLE')"
-	err := sea.Select(&tables, query, DbName)
-	return tables, err
-}
-
-// CreateModelColumn information schema column
-func CreateModelColumn(table string) ([]sea.InformationSchemaColumns, error) {
-	columns := []sea.InformationSchemaColumns{}
-	//query := "SELECT * FROM `information_schema`.`COLUMNS` WHERE(`TABLE_SCHEMA`=? AND `TABLE_NAME`=?)"
-	query := "SELECT `COLUMN_NAME` AS `column_name`,`DATA_TYPE` AS `data_type`,`IS_NULLABLE` AS `is_nullable`,`COLUMN_TYPE` AS `column_type`,`COLUMN_COMMENT` AS `column_comment` FROM `information_schema`.`COLUMNS` WHERE(`TABLE_SCHEMA`=? AND `TABLE_NAME`=?)"
-	err := sea.Select(&columns, query, DbName, table)
-	return columns, err
 }
 
 // CreateModelColumnDataTypeToGoType mysql data type to golang type
