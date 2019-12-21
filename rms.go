@@ -17,17 +17,19 @@ import (
 	"time"
 )
 
-// DataSourceName
-var DataSourceName string
+var (
+	// DataSourceName
+	DataSourceName string
 
-// PackageName
-var PackageName string
+	// PackageName
+	PackageName string
 
-// DbName
-var DbName string
+	// DbName
+	DbName string
 
-// xorm
-var Xorm string
+	// xorm
+	Xorm string
+)
 
 func init() {
 	flag.StringVar(&DataSourceName, "s", "root:root@tcp(127.0.0.1:3306)/mysql?charset=utf8mb4", "data source name")
@@ -94,9 +96,9 @@ func CreateModelWrite() error {
 			}
 			content += fmt.Sprintf("\t%s %s `json:\"%s\"", sea.UnderlineToPascal(columnName), golangType, vc.ColumnName)
 			if Xorm == "Y" {
-				content += fmt.Sprintf(" xorm:\"%s\"",CreateTagXORM(&vc))
+				content += fmt.Sprintf(" xorm:\"%s\"", CreateTagXORM(&vc))
 			}
-			content += fmt.Sprintf("` // %s\n",vc.ColumnComment)
+			content += fmt.Sprintf("` // %s\n", vc.ColumnComment)
 		}
 		content += fmt.Sprintf("}\n\n")
 	}
@@ -148,7 +150,7 @@ func CreateModelTable() ([]sea.InformationSchemaTables, error) {
 	//query := "SELECT * FROM `information_schema`.`TABLES` WHERE(`TABLE_SCHEMA`=? AND `TABLE_TYPE`='BASE TABLE')"
 	query := "SELECT `TABLE_NAME` AS `table_name`,`TABLE_COMMENT` AS `table_comment` FROM `information_schema`.`TABLES` WHERE(`TABLE_SCHEMA`=? AND `TABLE_TYPE`='BASE TABLE')"
 	err := sea.Select(&tables, query, DbName)
-	return tables,err
+	return tables, err
 }
 
 // CreateModelColumn information schema column
@@ -157,7 +159,7 @@ func CreateModelColumn(table string) ([]sea.InformationSchemaColumns, error) {
 	//query := "SELECT * FROM `information_schema`.`COLUMNS` WHERE(`TABLE_SCHEMA`=? AND `TABLE_NAME`=?)"
 	query := "SELECT `COLUMN_NAME` AS `column_name`,`DATA_TYPE` AS `data_type`,`IS_NULLABLE` AS `is_nullable`,`COLUMN_TYPE` AS `column_type`,`COLUMN_COMMENT` AS `column_comment` FROM `information_schema`.`COLUMNS` WHERE(`TABLE_SCHEMA`=? AND `TABLE_NAME`=?)"
 	err := sea.Select(&columns, query, DbName, table)
-	return columns,err
+	return columns, err
 }
 
 // CreateModelColumnDataTypeToGoType mysql data type to golang type
