@@ -1,3 +1,5 @@
+// Copyright (C) xooooooox
+
 // Reverse Mysql/MariaDB structure
 
 package main
@@ -53,20 +55,21 @@ func init() {
 }
 
 func main() {
-	err := CreateModelWrite()
+	err := WriteStructure()
 	if err != nil {
 		log.Fatalln(err)
 	}
 }
 
-// CreateModelWrite information schema write
-func CreateModelWrite() error {
+// WriteStructure information schema write into golang structure
+func WriteStructure() error {
 	tables, err := sea.InformationSchemaAllTables(DbName)
 	if err != nil {
 		return err
 	}
 	//return nil
-	content := "package " + PackageName + "\n\n"
+	content := "// Copyright (C) xooooooox\n\n"
+	content += "package " + PackageName + "\n\n"
 	content += fmt.Sprintf("// datetime %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 	lengthTable := len(tables)
 	if lengthTable == 0 {
@@ -83,7 +86,7 @@ func CreateModelWrite() error {
 		content += fmt.Sprintf("type %s struct{\n", sea.UnderlineToPascal(tableName))
 		for _, vc := range columns {
 			columnName := vc.ColumnName
-			golangType := CreateModelColumnDataTypeToGoType(vc.DataType)
+			golangType := ColumnDataTypeToGoType(vc.DataType)
 			// first
 			// golang base data type , exist 'unsigned' and 'int' keyword (integer may be unsigned)
 			if strings.Index(strings.ToLower(vc.ColumnType), "unsigned") > 0 && strings.Index(strings.ToLower(vc.ColumnType), "int") > 0 {
@@ -96,21 +99,21 @@ func CreateModelWrite() error {
 			}
 			content += fmt.Sprintf("\t%s %s `json:\"%s\"", sea.UnderlineToPascal(columnName), golangType, vc.ColumnName)
 			if Xorm == "Y" {
-				content += fmt.Sprintf(" xorm:\"%s\"", CreateTagXORM(&vc))
+				content += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
 			}
 			content += fmt.Sprintf("` // %s\n", vc.ColumnComment)
 		}
 		content += fmt.Sprintf("}\n\n")
+		err = WriteGoCode(&vt)
+		if err != nil {
+			return err
+		}
 	}
-	err = CreateModelWriteIntoFile(&content)
-	if err != nil {
-		return err
-	}
-	return nil
+	return WriteFile(DbName+".go", &content)
 }
 
-// CreateTagXORM create xorm tag
-func CreateTagXORM(c *sea.InformationSchemaColumns) string {
+// TagXorm create xorm tag
+func TagXorm(c *sea.InformationSchemaColumns) string {
 	content := ``
 	if strings.ToLower(c.Extra) == `auto_increment` {
 		content += `autoincr `
@@ -144,8 +147,8 @@ func CreateTagXORM(c *sea.InformationSchemaColumns) string {
 	return content
 }
 
-// CreateModelColumnDataTypeToGoType mysql data type to golang type
-func CreateModelColumnDataTypeToGoType(dataType string) string {
+// ColumnDataTypeToGoType mysql data type to golang type
+func ColumnDataTypeToGoType(dataType string) string {
 	switch strings.ToLower(dataType) {
 	case "tinyint":
 		return "int8"
@@ -162,41 +165,97 @@ func CreateModelColumnDataTypeToGoType(dataType string) string {
 	}
 }
 
-// CreateModelWriteIntoFile write into file
-func CreateModelWriteIntoFile(s *string) error {
-	separator := string(filepath.Separator)
-	absDir, _ := filepath.Abs("./")
-	filename := absDir + separator + DbName + ".go"
-	_, err := os.Stat(filename)
+// WriteGoCode quickly curd golang code
+func WriteGoCode(table *sea.InformationSchemaTables) error {
+	Table := sea.UnderlineToPascal(table.TableName)
+	code := "// Copyright (C) xooooooox\n\n"
+	code = fmt.Sprintf("%s// The following methods are only for single table operations\n\n", code)
+	code = fmt.Sprintf("%spackage "+PackageName+"\n\n", code)
+
+	code = fmt.Sprintf("%simport (\n\t\"github.com/xooooooox/sea\"\n)\n\n", code)
+	code = fmt.Sprintf("%s// Tips: insert one row return id and an error, or insert more rows return affected rows and an error\n", code)
+	code = fmt.Sprintf("%s// Insert%s insert one or more rows into `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc Insert%s(insert ...interface{}) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\tif len(insert) == 1 {\n", code)
+	code = fmt.Sprintf("%s\t\treturn sea.InsertOne(insert[0])\n", code)
+	code = fmt.Sprintf("%s\t}\n", code)
+	code = fmt.Sprintf("%s\treturn sea.Insert(insert...)\n", code)
+	code = fmt.Sprintf("%s}\n\n", code)
+
+	code = fmt.Sprintf("%s// Tips: sql where condition write into the first arg of args, sql arguments are based on args[1] to the end, return affected rows and an error\n", code)
+	code = fmt.Sprintf("%s// Delete%s delete one or more rows from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc Delete%s(args ...interface{}) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\treturn sea.Delete(&%s{}, args...)\n", code, Table)
+	code = fmt.Sprintf("%s}\n\n", code)
+
+	code = fmt.Sprintf("%s// Tips: update arg is the field that needs to be updated; sql where condition write into the first arg of args, sql arguments are based on args[1] to the end, return affected rows and an error\n", code)
+	code = fmt.Sprintf("%s// Update%s update one or more rows from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc Update%s(update map[string]interface{}, args ...interface{}) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\treturn sea.Update(&%s{}, update, args...)\n", code, Table)
+	code = fmt.Sprintf("%s}\n\n", code)
+
+	code = fmt.Sprintf("%s// Tips: it is strongly recommended that the id column be the unique key, preferably the primary key\n", code)
+	code = fmt.Sprintf("%s// DeleteById%s delete one row from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc DeleteById%s(id int64) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\treturn sea.Delete(&%s{},\"`id`=?\",id)\n", code, Table)
+	code = fmt.Sprintf("%s}\n\n", code)
+
+	code = fmt.Sprintf("%s// Tips: it is strongly recommended that the id column be the unique key, preferably the primary key\n", code)
+	code = fmt.Sprintf("%s// UpdateById%s update one rows from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc UpdateById%s(update map[string]interface{}, id int64) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\treturn sea.Update(&%s{}, update, \"`id`=?\",id)\n", code, Table)
+	code = fmt.Sprintf("%s}\n\n", code)
+
+	code = fmt.Sprintf("%s// Tips: execute a query sql\n", code)
+	code = fmt.Sprintf("%s// Select%s select rows from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc Select%s(query string, args ...interface{}) ([]%s, error) {\n", code, Table, Table)
+	code = fmt.Sprintf("%s\trows := []%s{}\n", code, Table)
+	code = fmt.Sprintf("%s\terr := sea.Select(&rows, query, args...)\n", code)
+	code = fmt.Sprintf("%s\treturn rows, err\n", code)
+	code = fmt.Sprintf("%s}\n\n", code)
+
+	code = fmt.Sprintf("%s// Tips: execute a query sql\n", code)
+	code = fmt.Sprintf("%s// SelectOne%s select one row from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc SelectOne%s(query string, args ...interface{}) (*%s, error) {\n", code, Table, Table)
+	code = fmt.Sprintf("%s\trow := %s{}\n", code, Table)
+	code = fmt.Sprintf("%s\terr := sea.Select(&row, query, args...)\n", code)
+	code = fmt.Sprintf("%s\treturn &row, err\n", code)
+	code = fmt.Sprintf("%s}\n\n", code)
+
+	return WriteFile(DbName+"___"+table.TableName+".go", &code)
+}
+
+// WriteFile write into file
+func WriteFile(file string, s *string) error {
+	ds := string(filepath.Separator)
+	abs, _ := filepath.Abs("./")
+	file = abs + ds + file
+	_, err := os.Stat(file)
 	// file exist
 	if err == nil {
 		// delete this file
-		err = os.Remove(filename)
+		err = os.Remove(file)
 		if err != nil {
 			return err
 		}
 	}
 	// create file
-	file, err := os.Create(filename)
-	defer func(file *os.File) {
-		_ = file.Close()
-	}(file)
+	f, err := os.Create(file)
+	defer func(f *os.File) {
+		_ = f.Close()
+	}(f)
 	if err != nil {
 		return err
 	}
-	n, err := file.WriteString(*s)
+	_, err = f.WriteString(*s)
 	if err != nil {
 		return err
 	}
-	if n < 1 {
-		return errors.New("write file failed")
-	}
-	_ = CreateModelFmtFile(filename)
-	return nil
+	return FmtFile(file)
 }
 
-// CreateModelFmtFile fmt file
-func CreateModelFmtFile(file string) error {
+// FmtFile fmt file
+func FmtFile(file string) error {
 	cmd := exec.Command("go", "fmt", file)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
