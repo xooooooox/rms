@@ -68,9 +68,9 @@ func WriteStructure() error {
 		return err
 	}
 	//return nil
-	content := "// Copyright (C) xooooooox\n\n"
-	content += "package " + PackageName + "\n\n"
-	content += fmt.Sprintf("// datetime %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+	code := "// Copyright (C) xooooooox\n\n"
+	code += "package " + PackageName + "\n\n"
+	code += fmt.Sprintf("// datetime %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 	lengthTable := len(tables)
 	if lengthTable == 0 {
 		return errors.New("haven't any table")
@@ -82,8 +82,8 @@ func WriteStructure() error {
 		if lengthColumn == 0 {
 			continue
 		}
-		content += fmt.Sprintf("// %s %s %s\n", sea.UnderlineToPascal(tableName), tableName, vt.TableComment)
-		content += fmt.Sprintf("type %s struct{\n", sea.UnderlineToPascal(tableName))
+		code += fmt.Sprintf("// %s %s %s\n", sea.UnderlineToPascal(tableName), tableName, vt.TableComment)
+		code += fmt.Sprintf("type %s struct{\n", sea.UnderlineToPascal(tableName))
 		for _, vc := range columns {
 			columnName := vc.ColumnName
 			golangType := ColumnDataTypeToGoType(vc.DataType)
@@ -97,19 +97,19 @@ func WriteStructure() error {
 			if strings.ToUpper(vc.IsNullable) == "YES" {
 				golangType = "*" + golangType
 			}
-			content += fmt.Sprintf("\t%s %s `json:\"%s\"", sea.UnderlineToPascal(columnName), golangType, vc.ColumnName)
+			code += fmt.Sprintf("\t%s %s `json:\"%s\"", sea.UnderlineToPascal(columnName), golangType, vc.ColumnName)
 			if Xorm == "Y" {
-				content += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
+				code += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
 			}
-			content += fmt.Sprintf("` // %s\n", vc.ColumnComment)
+			code += fmt.Sprintf("` // %s\n", vc.ColumnComment)
 		}
-		content += fmt.Sprintf("}\n\n")
+		code += fmt.Sprintf("}\n\n")
 		err = WriteGoCode(&vt)
 		if err != nil {
 			return err
 		}
 	}
-	return WriteFile(DbName+".go", &content)
+	return WriteFile(DbName+".go", &code)
 }
 
 // TagXorm create xorm tag
@@ -171,6 +171,7 @@ func WriteGoCode(table *sea.InformationSchemaTables) error {
 	code := "// Copyright (C) xooooooox\n\n"
 	code = fmt.Sprintf("%s// The following methods are only for single table operations\n\n", code)
 	code = fmt.Sprintf("%spackage "+PackageName+"\n\n", code)
+	code += fmt.Sprintf("// datetime %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 
 	code = fmt.Sprintf("%simport (\n\t\"github.com/xooooooox/sea\"\n)\n\n", code)
 	code = fmt.Sprintf("%s// Tips: insert one row return id and an error, or insert more rows return affected rows and an error\n", code)
