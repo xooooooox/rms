@@ -1,7 +1,5 @@
 // Copyright (C) xooooooox
 
-// Reverse Mysql/MariaDB structure
-
 package main
 
 import (
@@ -51,7 +49,10 @@ func init() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	sea.SetDbInstance(db)
+	err = sea.Instance(db)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -68,9 +69,9 @@ func WriteStructure() error {
 		return err
 	}
 	//return nil
-	code := "// Copyright (C) xooooooox\n\n"
-	code += "package " + PackageName + "\n\n"
+	code := "// Copyright (C) xooooooox\n"
 	code += fmt.Sprintf("// datetime %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+	code += "package " + PackageName + "\n\n"
 	lengthTable := len(tables)
 	if lengthTable == 0 {
 		return errors.New("haven't any table")
@@ -169,59 +170,40 @@ func ColumnDataTypeToGoType(dataType string) string {
 func WriteGoCode(table *sea.InformationSchemaTables) error {
 	Table := sea.UnderlineToPascal(table.TableName)
 	code := "// Copyright (C) xooooooox\n"
-	code = fmt.Sprintf("%s// The following methods are only for single table operations\n", code)
 	code = fmt.Sprintf("%s// datetime %s\n\n", code,time.Now().Format("2006-01-02 15:04:05"))
 	code = fmt.Sprintf("%spackage "+PackageName+"\n\n", code)
 	code = fmt.Sprintf("%simport (\n\t\"github.com/xooooooox/sea\"\n)\n\n", code)
 
-	//code = fmt.Sprintf("%simport (\n\t\"github.com/xooooooox/sea\"\n)\n\n", code)
-	//code = fmt.Sprintf("%s// Tips: insert one row return id and an error, or insert more rows return affected rows and an error\n", code)
-	//code = fmt.Sprintf("%s// Insert%s insert one or more rows into `%s`\n", code, Table, table.TableName)
-	//code = fmt.Sprintf("%sfunc Insert%s(insert ...interface{}) (int64, error) {\n", code, Table)
-	//code = fmt.Sprintf("%s\tif len(insert) == 1 {\n", code)
-	//code = fmt.Sprintf("%s\t\treturn sea.InsertOne(insert[0])\n", code)
-	//code = fmt.Sprintf("%s\t}\n", code)
-	//code = fmt.Sprintf("%s\treturn sea.Insert(insert...)\n", code)
-	//code = fmt.Sprintf("%s}\n\n", code)
-
 	code = fmt.Sprintf("%s// Tips: sql where condition write into the first arg of args, sql arguments are based on args[1] to the end, return affected rows and an error\n", code)
-	code = fmt.Sprintf("%s// Delete%s delete one or more rows from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc Delete%s(args ...interface{}) (int64, error) {\n", code, Table)
-	code = fmt.Sprintf("%s\treturn sea.Delete(&%s{}, args...)\n", code, Table)
+	code = fmt.Sprintf("%s// Del%s delete one or more rows from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc Del%s(where string, args ...interface{}) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\treturn sea.Del(&%s{}, where, args...)\n", code, Table)
 	code = fmt.Sprintf("%s}\n\n", code)
 
 	code = fmt.Sprintf("%s// Tips: update arg is the field that needs to be updated; sql where condition write into the first arg of args, sql arguments are based on args[1] to the end, return affected rows and an error\n", code)
-	code = fmt.Sprintf("%s// Update%s update one or more rows from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc Update%s(update map[string]interface{}, args ...interface{}) (int64, error) {\n", code, Table)
-	code = fmt.Sprintf("%s\treturn sea.Update(&%s{}, update, args...)\n", code, Table)
+	code = fmt.Sprintf("%s// Mod%s update one or more rows from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc Mod%s(update string, where string, args ...interface{}) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\treturn sea.Mod(&%s{}, update, where, args...)\n", code, Table)
 	code = fmt.Sprintf("%s}\n\n", code)
 
 	code = fmt.Sprintf("%s// Tips: it is strongly recommended that the id column be the unique key, preferably the primary key\n", code)
-	code = fmt.Sprintf("%s// DeleteById%s delete one row from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc DeleteById%s(id int64) (int64, error) {\n", code, Table)
-	code = fmt.Sprintf("%s\treturn sea.Delete(&%s{},\"`id`=?\",id)\n", code, Table)
+	code = fmt.Sprintf("%s// DelId%s delete one row from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc DelId%s(id int64) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\treturn sea.Del(&%s{},\"`id`=?\",id)\n", code, Table)
 	code = fmt.Sprintf("%s}\n\n", code)
 
 	code = fmt.Sprintf("%s// Tips: it is strongly recommended that the id column be the unique key, preferably the primary key\n", code)
-	code = fmt.Sprintf("%s// UpdateById%s update one rows from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc UpdateById%s(update map[string]interface{}, id int64) (int64, error) {\n", code, Table)
-	code = fmt.Sprintf("%s\treturn sea.Update(&%s{}, update, \"`id`=?\",id)\n", code, Table)
+	code = fmt.Sprintf("%s// ModId%s update one rows from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc ModId%s(update string, id int64) (int64, error) {\n", code, Table)
+	code = fmt.Sprintf("%s\treturn sea.Mod(&%s{}, update, \"`id`=?\",id)\n", code, Table)
 	code = fmt.Sprintf("%s}\n\n", code)
 
 	code = fmt.Sprintf("%s// Tips: execute a query sql\n", code)
-	code = fmt.Sprintf("%s// Select%s select rows from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc Select%s(query string, args ...interface{}) ([]%s, error) {\n", code, Table, Table)
+	code = fmt.Sprintf("%s// Get%s select rows from `%s`\n", code, Table, table.TableName)
+	code = fmt.Sprintf("%sfunc Get%s(query string, args ...interface{}) ([]%s, error) {\n", code, Table, Table)
 	code = fmt.Sprintf("%s\trows := []%s{}\n", code, Table)
-	code = fmt.Sprintf("%s\terr := sea.Select(&rows, query, args...)\n", code)
+	code = fmt.Sprintf("%s\terr := sea.Get(&rows, query, args...)\n", code)
 	code = fmt.Sprintf("%s\treturn rows, err\n", code)
-	code = fmt.Sprintf("%s}\n\n", code)
-
-	code = fmt.Sprintf("%s// Tips: execute a query sql\n", code)
-	code = fmt.Sprintf("%s// SelectOne%s select one row from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc SelectOne%s(query string, args ...interface{}) (*%s, error) {\n", code, Table, Table)
-	code = fmt.Sprintf("%s\trow := %s{}\n", code, Table)
-	code = fmt.Sprintf("%s\terr := sea.Select(&row, query, args...)\n", code)
-	code = fmt.Sprintf("%s\treturn &row, err\n", code)
 	code = fmt.Sprintf("%s}\n\n", code)
 
 	return WriteFile(DbName+"___"+table.TableName+".go", &code)
