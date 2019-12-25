@@ -168,11 +168,11 @@ func ColumnDataTypeToGoType(dataType string) string {
 // WriteGoCode quickly curd golang code
 func WriteGoCode(table *sea.InformationSchemaTables) error {
 	Table := sea.UnderlineToPascal(table.TableName)
-	code := "// Copyright (C) xooooooox\n\n"
-	code = fmt.Sprintf("%s// The following methods are only for single table operations\n\n", code)
+	code := "// Copyright (C) xooooooox\n"
+	code = fmt.Sprintf("%s// The following methods are only for single table operations\n", code)
+	code = fmt.Sprintf("%s// datetime %s\n\n", code,time.Now().Format("2006-01-02 15:04:05"))
 	code = fmt.Sprintf("%spackage "+PackageName+"\n\n", code)
-	code = fmt.Sprintf("%simport (\n\t\"githu.com/xooooooox/sea\"\n)\n\n", code)
-	code += fmt.Sprintf("// datetime %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+	code = fmt.Sprintf("%simport (\n\t\"github.com/xooooooox/sea\"\n)\n\n", code)
 
 	//code = fmt.Sprintf("%simport (\n\t\"github.com/xooooooox/sea\"\n)\n\n", code)
 	//code = fmt.Sprintf("%s// Tips: insert one row return id and an error, or insert more rows return affected rows and an error\n", code)
