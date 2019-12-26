@@ -42,7 +42,7 @@ func init() {
 func init() {
 	err := errors.New("error: Cannot connect to database")
 	db, err := sql.Open("mysql", DataSourceName)
-	if err != nil {
+	if err != nil || db == nil {
 		log.Fatalln(err)
 	}
 	err = db.Ping()
@@ -51,7 +51,7 @@ func init() {
 	}
 	err = sea.Instance(db)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 }
 
@@ -105,10 +105,10 @@ func WriteStructure() error {
 			code += fmt.Sprintf("` // %s\n", vc.ColumnComment)
 		}
 		code += fmt.Sprintf("}\n\n")
-		err = WriteGoCode(&vt)
-		if err != nil {
-			return err
-		}
+		//err = WriteGoCode(&vt)
+		//if err != nil {
+		//	return err
+		//}
 	}
 	return WriteFile(DbName+".go", &code)
 }
