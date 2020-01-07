@@ -170,7 +170,7 @@ func ColumnDataTypeToGoType(dataType string) string {
 func WriteGoCode(table *sea.InformationSchemaTables) error {
 	Table := sea.UnderlineToPascal(table.TableName)
 	code := "// Copyright (C) xooooooox\n"
-	code = fmt.Sprintf("%s// datetime %s\n\n", code,time.Now().Format("2006-01-02 15:04:05"))
+	code = fmt.Sprintf("%s// datetime %s\n\n", code, time.Now().Format("2006-01-02 15:04:05"))
 	code = fmt.Sprintf("%spackage "+PackageName+"\n\n", code)
 	code = fmt.Sprintf("%simport (\n\t\"github.com/xooooooox/sea\"\n)\n\n", code)
 
