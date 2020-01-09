@@ -33,7 +33,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&args.DatabaseSourceName, "s", "root:root@tcp(127.0.0.1:3306)/mysql?charset=utf8mb4", "database source name")
+	flag.StringVar(&args.DatabaseSourceName, "s", "root:root@tcp(127.0.0.1:3306)/xooooooox?charset=utf8mb4", "database source name")
 	flag.StringVar(&args.FilePackageName, "p", "orm", "Package name of file")
 	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file?")
 	flag.BoolVar(&args.Xorm, "x", false, "Whether to add xorm tag?")
