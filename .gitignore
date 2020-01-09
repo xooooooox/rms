@@ -12,3 +12,7 @@
 *.a
 *.so
 *.out
+
+# some source code
+*_test.go
+*_tmp.go

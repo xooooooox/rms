@@ -17,100 +17,99 @@ import (
 	"time"
 )
 
+// CommandLineArgs Command line args
+type CommandLineArgs struct {
+	DatabaseSourceName string
+	FilePackageName    string
+	DatabaseName       string
+	FmtFile            bool
+	Xorm               bool
+	FileSaveDir        string
+	FileNameSuffix string
+}
+
 var (
-	// DataSourceName
-	DataSourceName string
-
-	// PackageName
-	PackageName string
-
-	// DbName
-	DbName string
-
-	// xorm
-	Xorm string
+	args CommandLineArgs
 )
 
 func init() {
-	flag.StringVar(&DataSourceName, "s", "root:root@tcp(127.0.0.1:3306)/mysql?charset=utf8mb4", "data source name")
-	flag.StringVar(&PackageName, "p", "model", "package name")
-	flag.StringVar(&DbName, "d", "mysql", "database name")
-	flag.StringVar(&Xorm, "x", "N", "whether to add xorm tag?(Y/N)")
+	flag.StringVar(&args.DatabaseSourceName, "s", "root:root@tcp(127.0.0.1:3306)/mysql?charset=utf8mb4", "database source name")
+	flag.StringVar(&args.FilePackageName, "p", "orm", "Package name of file")
+	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file?")
+	flag.BoolVar(&args.Xorm, "x", false, "Whether to add xorm tag?")
+	flag.StringVar(&args.FileSaveDir, "d", "./", "Address of the saved file")
+	flag.StringVar(&args.FileNameSuffix, "i", "_tmp", "Name of file name suffix")
 	flag.Parse()
-}
-
-func init() {
-	err := errors.New("error: Cannot connect to database")
-	db, err := sql.Open("mysql", DataSourceName)
+	if args.DatabaseName == "" {
+		args.DatabaseName = args.DatabaseSourceName[strings.Index(args.DatabaseSourceName, "/")+1 : strings.Index(args.DatabaseSourceName, "?")]
+	}
+	db, err := sql.Open("mysql", args.DatabaseSourceName)
 	if err != nil || db == nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatalln(err)
+	if err = db.Ping(); err != nil {
+		log.Fatal(err)
 	}
-	err = sea.Instance(db)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	sea.DB = db
 }
 
 func main() {
-	err := WriteStructure()
-	if err != nil {
-		log.Fatalln(err)
+	if err := Write(); err != nil {
+		log.Fatal(err)
 	}
 }
 
-// WriteStructure information schema write into golang structure
-func WriteStructure() error {
-	tables, err := sea.InformationSchemaAllTables(DbName)
-	if err != nil {
-		return err
-	}
-	//return nil
-	code := "// Copyright (C) xooooooox\n"
-	code += fmt.Sprintf("// datetime %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
-	code += "package " + PackageName + "\n\n"
+// Write information schema
+func Write() error {
+	tables, _ := sea.InformationSchemaAllTables(args.DatabaseName)
 	lengthTable := len(tables)
 	if lengthTable == 0 {
 		return errors.New("haven't any table")
 	}
+	code := Head()
+	types := ""
+	consts := "const(\n"
 	for _, vt := range tables {
 		tableName := vt.TableName
+		pascalTableName := sea.UnderlineToPascal(tableName)
+		consts = fmt.Sprintf("%s\tTab%s = \"%s\" // %s\n", consts, pascalTableName, tableName, vt.TableComment)
 		columns, _ := sea.InformationSchemaAllColumns(vt.TableSchema, vt.TableName)
 		lengthColumn := len(columns)
 		if lengthColumn == 0 {
 			continue
 		}
-		code += fmt.Sprintf("// %s %s %s\n", sea.UnderlineToPascal(tableName), tableName, vt.TableComment)
-		code += fmt.Sprintf("type %s struct{\n", sea.UnderlineToPascal(tableName))
+		types += fmt.Sprintf("// %s %s %s\n", pascalTableName, tableName, vt.TableComment)
+		types += fmt.Sprintf("type %s struct{\n", pascalTableName)
 		for _, vc := range columns {
 			columnName := vc.ColumnName
 			golangType := ColumnDataTypeToGoType(vc.DataType)
-			// first
 			// golang base data type , exist 'unsigned' and 'int' keyword (integer may be unsigned)
 			if strings.Index(strings.ToLower(vc.ColumnType), "unsigned") > 0 && strings.Index(strings.ToLower(vc.ColumnType), "int") > 0 {
 				golangType = "u" + golangType
 			}
-			// twice
 			// current column allow null, set type is *type or (sql.NullInt64, sql.NullFloat64, sql.NullString ...), otherwise it causes rows.Scan panic
 			if strings.ToUpper(vc.IsNullable) == "YES" {
 				golangType = "*" + golangType
 			}
-			code += fmt.Sprintf("\t%s %s `json:\"%s\"", sea.UnderlineToPascal(columnName), golangType, vc.ColumnName)
-			if Xorm == "Y" {
-				code += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
+			types += fmt.Sprintf("\t%s %s `json:\"%s\"", sea.UnderlineToPascal(columnName), golangType, vc.ColumnName)
+			if args.Xorm {
+				types += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
 			}
-			code += fmt.Sprintf("` // %s\n", vc.ColumnComment)
+			types += fmt.Sprintf("` // %s\n", vc.ColumnComment)
 		}
-		code += fmt.Sprintf("}\n\n")
-		//err = WriteGoCode(&vt)
-		//if err != nil {
-		//	return err
-		//}
+		types += fmt.Sprintf("}\n")
 	}
-	return WriteFile(DbName+".go", &code)
+	consts = fmt.Sprintf("%s)\n\n", consts)
+	code = fmt.Sprintf("%s%s%s", code, consts, types)
+	return WriteFile(args.DatabaseName+args.FileNameSuffix+".go", &code)
+}
+
+// Head File head
+func Head() string {
+	code := "// Copyright (C) xooooooox\n"
+	code = fmt.Sprintf("%s// datetime %s\n\n", code, time.Now().Format("2006-01-02 15:04:05"))
+	code = fmt.Sprintf("%spackage %s\n\n", code, args.FilePackageName)
+	return code
 }
 
 // TagXorm create xorm tag
@@ -166,53 +165,10 @@ func ColumnDataTypeToGoType(dataType string) string {
 	}
 }
 
-// WriteGoCode quickly curd golang code
-func WriteGoCode(table *sea.InformationSchemaTables) error {
-	Table := sea.UnderlineToPascal(table.TableName)
-	code := "// Copyright (C) xooooooox\n"
-	code = fmt.Sprintf("%s// datetime %s\n\n", code, time.Now().Format("2006-01-02 15:04:05"))
-	code = fmt.Sprintf("%spackage "+PackageName+"\n\n", code)
-	code = fmt.Sprintf("%simport (\n\t\"github.com/xooooooox/sea\"\n)\n\n", code)
-
-	code = fmt.Sprintf("%s// Tips: sql where condition write into the first arg of args, sql arguments are based on args[1] to the end, return affected rows and an error\n", code)
-	code = fmt.Sprintf("%s// Del%s delete one or more rows from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc Del%s(where string, args ...interface{}) (int64, error) {\n", code, Table)
-	code = fmt.Sprintf("%s\treturn sea.Del(&%s{}, where, args...)\n", code, Table)
-	code = fmt.Sprintf("%s}\n\n", code)
-
-	code = fmt.Sprintf("%s// Tips: update arg is the field that needs to be updated; sql where condition write into the first arg of args, sql arguments are based on args[1] to the end, return affected rows and an error\n", code)
-	code = fmt.Sprintf("%s// Mod%s update one or more rows from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc Mod%s(update string, where string, args ...interface{}) (int64, error) {\n", code, Table)
-	code = fmt.Sprintf("%s\treturn sea.Mod(&%s{}, update, where, args...)\n", code, Table)
-	code = fmt.Sprintf("%s}\n\n", code)
-
-	code = fmt.Sprintf("%s// Tips: it is strongly recommended that the id column be the unique key, preferably the primary key\n", code)
-	code = fmt.Sprintf("%s// DelId%s delete one row from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc DelId%s(id int64) (int64, error) {\n", code, Table)
-	code = fmt.Sprintf("%s\treturn sea.Del(&%s{},\"`id`=?\",id)\n", code, Table)
-	code = fmt.Sprintf("%s}\n\n", code)
-
-	code = fmt.Sprintf("%s// Tips: it is strongly recommended that the id column be the unique key, preferably the primary key\n", code)
-	code = fmt.Sprintf("%s// ModId%s update one rows from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc ModId%s(update string, id int64) (int64, error) {\n", code, Table)
-	code = fmt.Sprintf("%s\treturn sea.Mod(&%s{}, update, \"`id`=?\",id)\n", code, Table)
-	code = fmt.Sprintf("%s}\n\n", code)
-
-	code = fmt.Sprintf("%s// Tips: execute a query sql\n", code)
-	code = fmt.Sprintf("%s// Get%s select rows from `%s`\n", code, Table, table.TableName)
-	code = fmt.Sprintf("%sfunc Get%s(query string, args ...interface{}) ([]%s, error) {\n", code, Table, Table)
-	code = fmt.Sprintf("%s\trows := []%s{}\n", code, Table)
-	code = fmt.Sprintf("%s\terr := sea.Get(&rows, query, args...)\n", code)
-	code = fmt.Sprintf("%s\treturn rows, err\n", code)
-	code = fmt.Sprintf("%s}\n\n", code)
-
-	return WriteFile(DbName+"___"+table.TableName+".go", &code)
-}
-
 // WriteFile write into file
 func WriteFile(file string, s *string) error {
 	ds := string(filepath.Separator)
-	abs, _ := filepath.Abs("./")
+	abs, _ := filepath.Abs(args.FileSaveDir)
 	file = abs + ds + file
 	_, err := os.Stat(file)
 	// file exist
@@ -235,7 +191,10 @@ func WriteFile(file string, s *string) error {
 	if err != nil {
 		return err
 	}
-	return FmtFile(file)
+	if args.FmtFile {
+		return FmtFile(file)
+	}
+	return nil
 }
 
 // FmtFile fmt file
