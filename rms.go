@@ -23,9 +23,10 @@ type CommandLineArgs struct {
 	FilePackageName    string
 	DatabaseName       string
 	FmtFile            bool
+	Json               bool
 	Xorm               bool
 	FileSaveDir        string
-	FileNameSuffix string
+	FileNameSuffix     string
 }
 
 var (
@@ -36,6 +37,7 @@ func init() {
 	flag.StringVar(&args.DatabaseSourceName, "s", "root:root@tcp(127.0.0.1:3306)/xooooooox?charset=utf8mb4", "database source name")
 	flag.StringVar(&args.FilePackageName, "p", "orm", "Package name of file")
 	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file?")
+	flag.BoolVar(&args.Json, "j", true, "Whether to add json tag?")
 	flag.BoolVar(&args.Xorm, "x", false, "Whether to add xorm tag?")
 	flag.StringVar(&args.FileSaveDir, "d", "./", "Address of the saved file")
 	flag.StringVar(&args.FileNameSuffix, "i", "_tmp", "Name of file name suffix")
@@ -91,11 +93,18 @@ func Write() error {
 			if strings.ToUpper(vc.IsNullable) == "YES" {
 				golangType = "*" + golangType
 			}
-			types += fmt.Sprintf("\t%s %s `json:\"%s\"", sea.UnderlineToPascal(columnName), golangType, vc.ColumnName)
-			if args.Xorm {
-				types += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
+			types += fmt.Sprintf("\t%s %s", sea.UnderlineToPascal(columnName), golangType)
+			tag := ""
+			if args.Json {
+				tag = fmt.Sprintf(" json:\"%s\"", vc.ColumnName)
 			}
-			types += fmt.Sprintf("` // %s\n", vc.ColumnComment)
+			if args.Xorm {
+				tag += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
+			}
+			if tag != "" {
+				types = fmt.Sprintf("%s `%s`", types, strings.TrimLeft(tag, " "))
+			}
+			types += fmt.Sprintf(" // %s\n", vc.ColumnComment)
 		}
 		types += fmt.Sprintf("}\n")
 	}
