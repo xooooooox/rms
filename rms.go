@@ -25,6 +25,7 @@ type CommandLineArgs struct {
 	FmtFile            bool
 	Json               bool
 	Xorm               bool
+	Version            bool
 	FileSaveDir        string
 	FileNameSuffix     string
 }
@@ -33,15 +34,26 @@ var (
 	args CommandLineArgs
 )
 
+// version version
+var version string = "1.0.0"
+
 func init() {
 	flag.StringVar(&args.DatabaseSourceName, "s", "root:root@tcp(127.0.0.1:3306)/xooooooox?charset=utf8mb4", "database source name")
 	flag.StringVar(&args.FilePackageName, "p", "orm", "Package name of file")
-	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file?")
-	flag.BoolVar(&args.Json, "j", true, "Whether to add json tag?")
-	flag.BoolVar(&args.Xorm, "x", false, "Whether to add xorm tag?")
+	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file")
+	flag.BoolVar(&args.Json, "j", true, "Whether to add json tag")
+	flag.BoolVar(&args.Xorm, "x", false, "Whether to add xorm tag")
+	flag.BoolVar(&args.Version, "v", false, "View version")
 	flag.StringVar(&args.FileSaveDir, "d", "./", "Address of the saved file")
 	flag.StringVar(&args.FileNameSuffix, "i", "_tmp", "Name of file name suffix")
 	flag.Parse()
+	osArgs := os.Args
+	for i := 0; i < len(osArgs); i++ {
+		if osArgs[i] == "-v" || osArgs[i] == "--version" {
+			fmt.Println(version)
+			os.Exit(0)
+		}
+	}
 	if args.DatabaseName == "" {
 		args.DatabaseName = args.DatabaseSourceName[strings.Index(args.DatabaseSourceName, "/")+1 : strings.Index(args.DatabaseSourceName, "?")]
 	}
