@@ -1,4 +1,4 @@
 github.com/go-sql-driver/mysql v1.5.0 h1:ozyZYNQW3x3HtqT1jira07DN2PArx2v7/mN66gGcHOs=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
-github.com/xooooooox/sea v0.0.0-20200126033358-f61b136e3cd0 h1:Z87LN68v1ooz6UQnXrI1inC3MXa4TwSbgvF/PmPw+h0=
-github.com/xooooooox/sea v0.0.0-20200126033358-f61b136e3cd0/go.mod h1:3xkPvpwbyrTNdis7f6R1l2IIAyAUKXaIAjU8yKRXYg8=
+github.com/xooooooox/sea v0.0.0-20200315072626-f265a2f4edde h1:TYnuTxP+WsBR+tA3JDohhYWP8EdliaeC2P5wXO+9X7Y=
+github.com/xooooooox/sea v0.0.0-20200315072626-f265a2f4edde/go.mod h1:ihnlxzEOHSgQXp+e2n273UnwUPi3zxzP4ddBECwKONE=

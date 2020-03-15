@@ -31,13 +31,14 @@ type CommandLineArgs struct {
 }
 
 var (
-	args CommandLineArgs
+	args *CommandLineArgs
 )
 
 // version version
-var version string = "1.0.0"
+var version string = "1.0.1"
 
 func init() {
+	args = &CommandLineArgs{}
 	flag.StringVar(&args.DatabaseSourceName, "s", "root:root@tcp(127.0.0.1:3306)/xooooooox?charset=utf8mb4", "database source name")
 	flag.StringVar(&args.FilePackageName, "p", "orm", "Package name of file")
 	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file")
@@ -84,15 +85,14 @@ func Write() error {
 	types := ""
 	consts := "const(\n"
 	for _, vt := range tables {
-		tableName := vt.TableName
-		pascalTableName := sea.UnderlineToPascal(tableName)
-		consts = fmt.Sprintf("%s\tTab%s = \"%s\" // %s\n", consts, pascalTableName, tableName, vt.TableComment)
+		pascalTableName := sea.UnderlineToPascal(vt.TableName)
+		consts = fmt.Sprintf("%s\tTab%s = \"%s\" // %s\n", consts, pascalTableName, vt.TableName, vt.TableComment)
 		columns, _ := sea.InformationSchemaAllColumns(vt.TableSchema, vt.TableName)
 		lengthColumn := len(columns)
 		if lengthColumn == 0 {
 			continue
 		}
-		types += fmt.Sprintf("// %s %s %s\n", pascalTableName, tableName, vt.TableComment)
+		types += fmt.Sprintf("// %s %s %s\n", pascalTableName, vt.TableName, vt.TableComment)
 		types += fmt.Sprintf("type %s struct{\n", pascalTableName)
 		for _, vc := range columns {
 			columnName := vc.ColumnName
@@ -224,4 +224,43 @@ func FmtFile(file string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// PascalToUnderline XxxYyy to xxx_yyy
+func PascalToUnderline(s string) string {
+	tmp := []byte{}
+	j := false
+	num := len(s)
+	for i := 0; i < num; i++ {
+		d := s[i]
+		if i > 0 && d >= 'A' && d <= 'Z' && j {
+			tmp = append(tmp, '_')
+		}
+		if d != '_' {
+			j = true
+		}
+		tmp = append(tmp, d)
+	}
+	return strings.ToLower(string(tmp[:]))
+}
+
+// UnderlineToPascal xxx_yyy to XxxYyy
+func UnderlineToPascal(s string) string {
+	tmp := []byte{}
+	bytes := []byte(s)
+	length := len(bytes)
+	nextLetterNeedToUpper := true
+	for i := 0; i < length; i++ {
+		if bytes[i] == '_' {
+			nextLetterNeedToUpper = true
+			continue
+		}
+		if nextLetterNeedToUpper && bytes[i] >= 'a' && bytes[i] <= 'z' {
+			tmp = append(tmp, bytes[i]-32)
+		} else {
+			tmp = append(tmp, bytes[i])
+		}
+		nextLetterNeedToUpper = false
+	}
+	return string(tmp[:])
 }
