@@ -24,6 +24,7 @@ type CommandLineArgs struct {
 	DatabaseName       string
 	FmtFile            bool
 	Json               bool
+	Gorm               bool
 	Xorm               bool
 	Version            bool
 	FileSaveDir        string
@@ -43,6 +44,7 @@ func init() {
 	flag.StringVar(&args.FilePackageName, "p", "orm", "Package name of file")
 	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file")
 	flag.BoolVar(&args.Json, "j", true, "Whether to add json tag")
+	flag.BoolVar(&args.Gorm, "g", false, "Whether to add gorm tag")
 	flag.BoolVar(&args.Xorm, "x", false, "Whether to add xorm tag")
 	flag.BoolVar(&args.Version, "v", false, "View version")
 	flag.StringVar(&args.FileSaveDir, "d", "./", "Address of the saved file")
@@ -110,6 +112,9 @@ func Write() error {
 			if args.Json {
 				tag = fmt.Sprintf(" json:\"%s\"", vc.ColumnName)
 			}
+			if args.Gorm {
+				tag += fmt.Sprintf(" gorm:\"%s\"", TagGorm(&vc))
+			}
 			if args.Xorm {
 				tag += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
 			}
@@ -165,6 +170,41 @@ func TagXorm(c *sea.InformationSchemaColumns) string {
 	}
 	// content += `comment:'` + c.ColumnComment + `' `
 	content = strings.TrimRight(content, ` `)
+	return content
+}
+
+// TagGorm create gorm tag
+func TagGorm(c *sea.InformationSchemaColumns) string {
+	content := `column:` + c.ColumnName + `;`
+	if strings.ToLower(c.Extra) == `auto_increment` {
+		content += `auto_increment;`
+	}
+	if strings.ToLower(c.ColumnKey) == `pri` {
+		content += `primary_key;`
+	}
+	if strings.ToLower(c.ColumnKey) == `uni` {
+		content += `unique;`
+	}
+	if strings.ToLower(c.ColumnKey) == `mul` {
+		content += `index;`
+	}
+	content += `type:` + c.ColumnType + `;`
+	if strings.ToLower(c.IsNullable) == "no" {
+		content += `not null;`
+		if c.ColumnDefault != nil {
+			columnDefault := *c.ColumnDefault
+			if columnDefault == `0` {
+				content += `default 0;`
+			}
+			if columnDefault == `''` {
+				content += `default '';`
+			}
+		}
+	} else {
+		content += `default null;`
+	}
+	content += `comment:'` + c.ColumnComment + `'`
+	content = strings.TrimRight(content, `;`)
 	return content
 }
 
