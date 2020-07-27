@@ -36,7 +36,7 @@ var (
 )
 
 // version version
-var version string = "1.0.1"
+var version string = "1.0.2"
 
 func init() {
 	args = &CommandLineArgs{}
@@ -85,10 +85,8 @@ func Write() error {
 	}
 	code := Head()
 	types := ""
-	consts := "const(\n"
 	for _, vt := range tables {
 		pascalTableName := sea.UnderlineToPascal(vt.TableName)
-		consts = fmt.Sprintf("%s\tTab%s = \"%s\" // %s\n", consts, pascalTableName, vt.TableName, vt.TableComment)
 		columns, _ := sea.InformationSchemaAllColumns(vt.TableSchema, vt.TableName)
 		lengthColumn := len(columns)
 		if lengthColumn == 0 {
@@ -110,7 +108,10 @@ func Write() error {
 			types += fmt.Sprintf("\t%s %s", sea.UnderlineToPascal(columnName), golangType)
 			tag := ""
 			if args.Json {
-				tag = fmt.Sprintf(" json:\"%s\"", vc.ColumnName)
+				tag = fmt.Sprintf(" json:\"%s\"", sea.PascalToUnderline(vc.ColumnName))
+			}
+			if args.Gorm {
+				tag += fmt.Sprintf(" gorm:\"%s\"", TagGorm(&vc))
 			}
 			if args.Gorm {
 				tag += fmt.Sprintf(" gorm:\"%s\"", TagGorm(&vc))
@@ -121,12 +122,14 @@ func Write() error {
 			if tag != "" {
 				types = fmt.Sprintf("%s `%s`", types, strings.TrimLeft(tag, " "))
 			}
-			types += fmt.Sprintf(" // %s\n", vc.ColumnComment)
+			if vc.ColumnComment != "" {
+				types += fmt.Sprintf(" // %s", vc.ColumnComment)
+			}
+			types += "\n" // add \n at the end of the line
 		}
 		types += fmt.Sprintf("}\n")
 	}
-	consts = fmt.Sprintf("%s)\n\n", consts)
-	code = fmt.Sprintf("%s%s%s", code, consts, types)
+	code = fmt.Sprintf("%s%s", code, types)
 	return WriteFile(args.DatabaseName+args.FileNameSuffix+".go", &code)
 }
 
