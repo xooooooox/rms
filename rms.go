@@ -24,6 +24,7 @@ type CommandLineArgs struct {
 	DatabaseName       string
 	FmtFile            bool
 	Json               bool
+	Gorm               bool
 	Xorm               bool
 	Version            bool
 	FileSaveDir        string
@@ -35,7 +36,7 @@ var (
 )
 
 // version version
-var version string = "1.0.1"
+var version string = "1.0.2"
 
 func init() {
 	args = &CommandLineArgs{}
@@ -43,6 +44,7 @@ func init() {
 	flag.StringVar(&args.FilePackageName, "p", "orm", "Package name of file")
 	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file")
 	flag.BoolVar(&args.Json, "j", true, "Whether to add json tag")
+	flag.BoolVar(&args.Gorm, "g", false, "Whether to add gorm tag")
 	flag.BoolVar(&args.Xorm, "x", false, "Whether to add xorm tag")
 	flag.BoolVar(&args.Version, "v", false, "View version")
 	flag.StringVar(&args.FileSaveDir, "d", "./", "Address of the saved file")
@@ -83,10 +85,8 @@ func Write() error {
 	}
 	code := Head()
 	types := ""
-	consts := "const(\n"
 	for _, vt := range tables {
 		pascalTableName := sea.UnderlineToPascal(vt.TableName)
-		consts = fmt.Sprintf("%s\tTab%s = \"%s\" // %s\n", consts, pascalTableName, vt.TableName, vt.TableComment)
 		columns, _ := sea.InformationSchemaAllColumns(vt.TableSchema, vt.TableName)
 		lengthColumn := len(columns)
 		if lengthColumn == 0 {
@@ -108,7 +108,10 @@ func Write() error {
 			types += fmt.Sprintf("\t%s %s", sea.UnderlineToPascal(columnName), golangType)
 			tag := ""
 			if args.Json {
-				tag = fmt.Sprintf(" json:\"%s\"", vc.ColumnName)
+				tag = fmt.Sprintf(" json:\"%s\"", sea.PascalToUnderline(vc.ColumnName))
+			}
+			if args.Gorm {
+				tag += fmt.Sprintf(" gorm:\"%s\"", TagGorm(&vc))
 			}
 			if args.Xorm {
 				tag += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
@@ -116,12 +119,14 @@ func Write() error {
 			if tag != "" {
 				types = fmt.Sprintf("%s `%s`", types, strings.TrimLeft(tag, " "))
 			}
-			types += fmt.Sprintf(" // %s\n", vc.ColumnComment)
+			if vc.ColumnComment != "" {
+				types += fmt.Sprintf(" // %s", vc.ColumnComment)
+			}
+			types += "\n" // add \n at the end of the line
 		}
 		types += fmt.Sprintf("}\n")
 	}
-	consts = fmt.Sprintf("%s)\n\n", consts)
-	code = fmt.Sprintf("%s%s%s", code, consts, types)
+	code = fmt.Sprintf("%s%s", code, types)
 	return WriteFile(args.DatabaseName+args.FileNameSuffix+".go", &code)
 }
 
@@ -165,6 +170,41 @@ func TagXorm(c *sea.InformationSchemaColumns) string {
 	}
 	// content += `comment:'` + c.ColumnComment + `' `
 	content = strings.TrimRight(content, ` `)
+	return content
+}
+
+// TagGorm create gorm tag
+func TagGorm(c *sea.InformationSchemaColumns) string {
+	content := `column:` + c.ColumnName + `;`
+	if strings.ToLower(c.Extra) == `auto_increment` {
+		content += `auto_increment;`
+	}
+	if strings.ToLower(c.ColumnKey) == `pri` {
+		content += `primary_key;`
+	}
+	if strings.ToLower(c.ColumnKey) == `uni` {
+		content += `unique;`
+	}
+	if strings.ToLower(c.ColumnKey) == `mul` {
+		content += `index;`
+	}
+	content += `type:` + c.ColumnType + `;`
+	if strings.ToLower(c.IsNullable) == "no" {
+		content += `not null;`
+		if c.ColumnDefault != nil {
+			columnDefault := *c.ColumnDefault
+			if columnDefault == `0` {
+				content += `default 0;`
+			}
+			if columnDefault == `''` {
+				content += `default '';`
+			}
+		}
+	} else {
+		content += `default null;`
+	}
+	content += `comment:'` + c.ColumnComment + `'`
+	content = strings.TrimRight(content, `;`)
 	return content
 }
 
