@@ -7,14 +7,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/xooooooox/sea"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/xooooooox/sea"
 )
 
 // CommandLineArgs Command line args
@@ -22,13 +23,13 @@ type CommandLineArgs struct {
 	DatabaseSourceName string
 	FilePackageName    string
 	DatabaseName       string
+	FileName           string
 	FmtFile            bool
 	Json               bool
 	Gorm               bool
 	Xorm               bool
 	Version            bool
 	FileSaveDir        string
-	FileNameSuffix     string
 }
 
 var (
@@ -36,19 +37,19 @@ var (
 )
 
 // version version
-var version string = "1.0.2"
+var version string = "1.0.3"
 
 func init() {
 	args = &CommandLineArgs{}
 	flag.StringVar(&args.DatabaseSourceName, "s", "root:root@tcp(127.0.0.1:3306)/xooooooox?charset=utf8mb4", "database source name")
-	flag.StringVar(&args.FilePackageName, "p", "orm", "Package name of file")
+	flag.StringVar(&args.FilePackageName, "p", "db", "Package name of file")
+	flag.StringVar(&args.FileName, "o", "database_structures", "Output file name")
 	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file")
 	flag.BoolVar(&args.Json, "j", true, "Whether to add json tag")
 	flag.BoolVar(&args.Gorm, "g", false, "Whether to add gorm tag")
 	flag.BoolVar(&args.Xorm, "x", false, "Whether to add xorm tag")
 	flag.BoolVar(&args.Version, "v", false, "View version")
 	flag.StringVar(&args.FileSaveDir, "d", "./", "Address of the saved file")
-	flag.StringVar(&args.FileNameSuffix, "i", "_tmp", "Name of file name suffix")
 	flag.Parse()
 	osArgs := os.Args
 	for i := 0; i < len(osArgs); i++ {
@@ -130,12 +131,16 @@ func Write() error {
 		types += fmt.Sprintf("}\n")
 	}
 	code = fmt.Sprintf("%s%s", code, types)
-	return WriteFile(args.DatabaseName+args.FileNameSuffix+".go", &code)
+	filename := args.FileName
+	if strings.Index(filename, ".") < 0 {
+		filename += ".go"
+	}
+	return WriteFile(filename, &code)
 }
 
 // Head File head
 func Head() string {
-	code := "// Copyright (C) xooooooox\n"
+	code := ""
 	code = fmt.Sprintf("%s// datetime %s\n\n", code, time.Now().Format("2006-01-02 15:04:05"))
 	code = fmt.Sprintf("%spackage %s\n\n", code, args.FilePackageName)
 	return code
