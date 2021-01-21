@@ -43,7 +43,7 @@ func init() {
 	args = &CommandLineArgs{}
 	flag.StringVar(&args.DatabaseSourceName, "s", "root:root@tcp(127.0.0.1:3306)/xooooooox?charset=utf8mb4", "database source name")
 	flag.StringVar(&args.FilePackageName, "p", "db", "Package name of file")
-	flag.StringVar(&args.FileName, "o", "database_structures", "Output file name")
+	flag.StringVar(&args.FileName, "o", "database", "Output file name")
 	flag.BoolVar(&args.FmtFile, "f", true, "Is fmt go file")
 	flag.BoolVar(&args.Json, "j", true, "Whether to add json tag")
 	flag.BoolVar(&args.Gorm, "g", false, "Whether to add gorm tag")
