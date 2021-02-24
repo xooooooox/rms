@@ -114,9 +114,6 @@ func Write() error {
 			if args.Gorm {
 				tag += fmt.Sprintf(" gorm:\"%s\"", TagGorm(&vc))
 			}
-			if args.Gorm {
-				tag += fmt.Sprintf(" gorm:\"%s\"", TagGorm(&vc))
-			}
 			if args.Xorm {
 				tag += fmt.Sprintf(" xorm:\"%s\"", TagXorm(&vc))
 			}
