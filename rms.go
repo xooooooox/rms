@@ -109,7 +109,7 @@ func Write() error {
 			types += fmt.Sprintf("\t%s %s", sea.UnderlineToPascal(columnName), golangType)
 			tag := ""
 			if args.Json {
-				tag = fmt.Sprintf(" json:\"%s\"", sea.PascalToUnderline(vc.ColumnName))
+				tag = fmt.Sprintf(" json:\"%s,omitempty\"", sea.PascalToUnderline(vc.ColumnName))
 			}
 			if args.Gorm {
 				tag += fmt.Sprintf(" gorm:\"%s\"", TagGorm(&vc))
